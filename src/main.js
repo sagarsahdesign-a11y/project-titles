@@ -8,7 +8,7 @@ import './style.css'
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
 // Values come from .env (VITE_* vars). Hardcoded fallbacks ensure the app
-// works even if the dev server was started before .env was created.
+// works even if the dev server/CI was started before .env was created or set.
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY            || 'AIzaSyBWNd0jfebqqmFYnw8_yIPt6MAzYGvbrn8',
   authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN        || 'projecttitle-ccffc.firebaseapp.com',
@@ -21,7 +21,6 @@ const firebaseConfig = {
 
 // ── STARTUP DIAGNOSTIC ────────────────────────────────────────────────────────
 // Logs config so you can confirm env vars are being picked up.
-// apiKey is partially masked for safety.
 const maskedKey = firebaseConfig.apiKey
   ? firebaseConfig.apiKey.slice(0, 8) + '…' + firebaseConfig.apiKey.slice(-4)
   : 'MISSING'
@@ -30,7 +29,7 @@ console.log('[TitleReg] Firebase config loaded:', {
   apiKey:            maskedKey,
   projectId:         firebaseConfig.projectId,
   authDomain:        firebaseConfig.authDomain,
-  source:            import.meta.env.VITE_FIREBASE_API_KEY ? '.env' : 'hardcoded fallback',
+  source:            import.meta.env.VITE_FIREBASE_API_KEY ? '.env / dashboard env' : 'hardcoded fallback',
 })
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
@@ -42,7 +41,6 @@ try {
   console.log('[TitleReg] Firebase initialised ✓')
 } catch (err) {
   console.error('[TitleReg] Firebase init failed:', err)
-  showFatalError('Firebase failed to initialise. Check the config.')
 }
 
 const COLL = 'claims'
@@ -73,6 +71,19 @@ const dupModal       = $('dup-modal')
 const dupCancel      = $('dup-cancel')
 const dupConfirm     = $('dup-confirm')
 const dupModalDetail = $('dup-modal-detail')
+const liveChip       = $('live-chip')
+const debugProjectId = $('debug-project-id')
+const debugSource    = $('debug-source')
+
+// ── POPULATE DEBUG INFO ───────────────────────────────────────────────────────
+if (debugProjectId) {
+  debugProjectId.textContent = firebaseConfig.projectId || 'UNDEFINED'
+}
+if (debugSource) {
+  debugSource.textContent = import.meta.env.VITE_FIREBASE_API_KEY
+    ? 'Vercel / .env Variable'
+    : 'Hardcoded Fallback'
+}
 
 // ── APP STATE ─────────────────────────────────────────────────────────────────
 let allClaims         = []
@@ -80,6 +91,87 @@ let pendingRemoveId   = null
 let pendingSubmitData = null
 let toastTimer        = null
 let lastHighIds       = []
+
+// Shared connection status flag: 'loading' | 'connected' | 'error'
+let connectionStatus = 'loading'
+
+// ── CONNECTION STATUS HANDLER ─────────────────────────────────────────────────
+function setConnectionStatus(status, errorDetail = '') {
+  connectionStatus = status
+  console.log(`[TitleReg] Connection Status: ${status.toUpperCase()}`, errorDetail || '')
+
+  if (status === 'loading') {
+    loadingSkel.style.display = 'block'
+    claimsList.style.display = 'none'
+    emptyState.style.display = 'none'
+    
+    // Stats stuck state
+    countTotal.textContent = '—'
+    countToday.textContent = '—'
+
+    // Form inputs and buttons
+    submitBtn.disabled = true
+    btnLabel.textContent = 'Connecting...'
+
+    // Live indicator
+    if (liveChip) {
+      liveChip.textContent = 'Connecting...'
+      liveChip.style.color = 'var(--text-3)'
+      liveChip.style.setProperty('--green', 'var(--text-3)')
+    }
+  } 
+  else if (status === 'connected') {
+    loadingSkel.style.display = 'none'
+    claimsList.style.display = 'block'
+
+    // Form activation
+    submitBtn.disabled = false
+    btnLabel.textContent = 'Register Title'
+
+    // Live indicator
+    if (liveChip) {
+      liveChip.textContent = 'Live'
+      liveChip.style.color = 'var(--green)'
+      liveChip.style.setProperty('--green', 'var(--green)')
+    }
+  } 
+  else if (status === 'error') {
+    loadingSkel.style.display = 'none'
+    claimsList.style.display = 'block'
+    emptyState.style.display = 'none'
+
+    // Stats show Connection error
+    countTotal.textContent = 'Offline'
+    countToday.textContent = 'Offline'
+
+    // Form inactivation
+    submitBtn.disabled = true
+    btnLabel.textContent = 'Database Offline'
+
+    // Live indicator
+    if (liveChip) {
+      liveChip.textContent = 'Offline'
+      liveChip.style.color = 'var(--red)'
+      liveChip.style.setProperty('--green', 'var(--red)')
+    }
+
+    // Render error message inside lists view
+    claimsList.innerHTML = `
+      <div style="text-align:center;padding:40px 20px;color:#dc2626">
+        <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+        <div style="font-weight:700;margin-bottom:6px">Database Connection Error</div>
+        <div style="font-size:13px;color:#6b7280;margin-bottom:16px;">
+          ${errorDetail || 'Could not establish connection to the database.'}
+        </div>
+        <button onclick="location.reload()" style="padding:8px 20px;background:var(--blue);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">
+          Retry Connection
+        </button>
+      </div>`
+  }
+}
+
+// Initial status
+setConnectionStatus('loading')
 
 // ── DUPLICATE DETECTION ───────────────────────────────────────────────────────
 const STOP = new Set([
@@ -139,6 +231,7 @@ titleInput.addEventListener('input', () => checkDupsUI(titleInput.value))
 // ── FORM SUBMIT ───────────────────────────────────────────────────────────────
 form.addEventListener('submit', async e => {
   e.preventDefault()
+  if (connectionStatus !== 'connected') return // Block submits if offline
   const teamName = teamInput.value.trim()
   const title    = titleInput.value.trim()
   const note     = noteInput.value.trim()
@@ -165,7 +258,6 @@ dupConfirm.addEventListener('click', async () => {
 })
 
 async function doSubmit({ teamName, title, note }) {
-  // Disable button immediately, show loading state
   submitBtn.disabled    = true
   btnLabel.textContent  = 'Registering…'
 
@@ -174,7 +266,6 @@ async function doSubmit({ teamName, title, note }) {
       teamName,
       title,
       note,
-      // submittedAt is the canonical timestamp field for ordering
       submittedAt: serverTimestamp(),
     })
 
@@ -185,13 +276,11 @@ async function doSubmit({ teamName, title, note }) {
     console.log('[TitleReg] Document written successfully')
 
   } catch (err) {
-    // Log the full error so you can diagnose permission/index issues
     console.error('[TitleReg] addDoc failed:', err.code, err.message, err)
 
-    // Show a clear, specific message based on error type
     if (err.code === 'permission-denied') {
       showToast('❌ Permission denied — check Firestore rules.', 'error')
-      showInlineError('Database permission denied. Ask your admin to update Firestore rules.')
+      showInlineError('Database permission denied. Firestore rules must allow writes to the claims collection.')
     } else if (err.code === 'unavailable' || err.code === 'network-request-failed') {
       showToast('❌ No connection — check your internet.', 'error')
     } else {
@@ -199,7 +288,6 @@ async function doSubmit({ teamName, title, note }) {
     }
 
   } finally {
-    // Always reset the button — it will NEVER stay stuck
     submitBtn.disabled   = false
     btnLabel.textContent = 'Register Title'
   }
@@ -228,31 +316,18 @@ window.__removeEntry = (id, title) => {
   removeModal.classList.add('open')
 }
 
-// ── REAL-TIME LISTENER ────────────────────────────────────────────────────────
-// NOTE on ordering:
-//   - New documents written by this app set `submittedAt` via serverTimestamp().
-//   - Old documents (written by the previous version) used field name `ts`.
-//   - We query orderBy('submittedAt') which only requires a single-field index
-//     (auto-created by Firestore — NO composite index needed).
-//   - Old docs without `submittedAt` will appear at the END of the list (nulls last),
-//     which is fine. They will NOT cause the listener to fail.
-
+// ── REAL-TIME LISTENER (SINGLE LISTEN POINT) ──────────────────────────────────
 if (db) {
   const q = query(collection(db, COLL), orderBy('submittedAt', 'desc'))
 
   onSnapshot(
     q,
-
-    // SUCCESS handler
+    // SUCCESS handler: Updates ALL UI states together
     snap => {
-      loadingSkel.style.display = 'none'
-      console.log(`[TitleReg] onSnapshot received ${snap.size} document(s)`)
-
       allClaims = snap.docs.map(d => {
         const data = d.data()
         return {
           id:          d.id,
-          // Support both old field name (ts) and new field name (submittedAt)
           teamName:    data.teamName  || data.team || '',
           title:       data.title     || '',
           note:        data.note      || '',
@@ -260,7 +335,7 @@ if (db) {
         }
       })
 
-      // Update stat cards
+      // Update stats totals using the fresh list
       const today      = new Date().toDateString()
       const todayCount = allClaims.filter(c =>
         c.submittedAt?.toDate?.()?.toDateString?.() === today
@@ -269,42 +344,34 @@ if (db) {
       countTotal.textContent = allClaims.length
       countToday.textContent = todayCount
 
+      // Switch status to connected (triggers UI layout change)
+      setConnectionStatus('connected')
+
+      // Render cards
       renderCards(searchInput.value.trim())
     },
-
-    // ERROR handler — never leave skeletons spinning forever
+    // ERROR handler: Puts all elements into sync error status
     err => {
-      loadingSkel.style.display = 'none'
-      console.error('[TitleReg] onSnapshot error:', err.code, err.message, err)
+      let friendlyError = err.message
+      if (err.code === 'permission-denied') {
+        friendlyError = 'Permission denied. Check security rules in the Firebase console.'
+      } else if (err.code === 'failed-precondition') {
+        friendlyError = 'Index required. Open browser console to create it.'
+      }
+      
+      setConnectionStatus('error', friendlyError)
 
-      // Show inline error in the list area instead of infinite skeletons
-      claimsList.innerHTML = `
-        <div style="text-align:center;padding:40px 20px;color:#dc2626">
-          <div style="font-size:32px;margin-bottom:12px">⚠️</div>
-          <div style="font-weight:700;margin-bottom:6px">Couldn't connect to the database</div>
-          <div style="font-size:13px;color:#6b7280">
-            ${err.code === 'permission-denied'
-              ? 'Firestore rules are blocking reads. Update rules to allow <code>claims</code>.'
-              : err.code === 'failed-precondition'
-              ? 'A Firestore index is required. See console for the link.'
-              : `Error: ${err.code || err.message}`
-            }
-          </div>
-          <button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:#1a6bff;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px">
-            Retry
-          </button>
-        </div>`
-
-      // Also surface index creation link if needed
       if (err.code === 'failed-precondition') {
         const match = err.message.match(/https?:\/\/\S+/)
         if (match) {
-          console.warn('[TitleReg] Create the required Firestore index here:', match[0])
-          showToast('⚠️ Index needed — see console for link', 'error')
+          console.warn('[TitleReg] Create required index here:', match[0])
+          showToast('⚠️ Index required — link in console log', 'error')
         }
       }
     }
   )
+} else {
+  setConnectionStatus('error', 'Firestore database could not be initialized.')
 }
 
 // ── RENDER CARDS ──────────────────────────────────────────────────────────────
@@ -383,9 +450,10 @@ function esc(str) {
     .replace(/"/g, '&quot;')
 }
 
-let toastEl = toast  // reference kept for showFatalError (called before DOM is guaranteed)
+let toastEl = toast
 
 function showToast(msg, type = '') {
+  if (!toastEl) return
   toastEl.textContent = msg
   toastEl.className   = 'show' + (type ? ' ' + type : '')
   clearTimeout(toastTimer)
@@ -400,18 +468,6 @@ function showInlineError(msg) {
   el.textContent = '⚠️ ' + msg
   form.appendChild(el)
   setTimeout(() => el.remove(), 8000)
-}
-
-function showFatalError(msg) {
-  const body = document.body
-  if (!body) return
-  const el = document.createElement('div')
-  el.style.cssText =
-    'position:fixed;top:60px;left:50%;transform:translateX(-50%);' +
-    'background:#dc2626;color:#fff;padding:12px 24px;border-radius:8px;' +
-    'font-size:14px;font-weight:600;z-index:9999;text-align:center;max-width:90vw'
-  el.textContent = '⚠️ ' + msg
-  body.appendChild(el)
 }
 
 ;[removeModal, dupModal].forEach(m => {
