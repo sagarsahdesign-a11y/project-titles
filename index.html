@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Project Title Registry for B.Tech Cyber Security final year projects — claim your title and avoid duplicates." />
+  <title>Project Title Registry — CyberSec FYP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── RESET & BASE ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink:        #1a1208;
+      --ink-light:  #3d2f1a;
+      --ink-muted:  #7a6a55;
+      --paper:      #f5f0e8;
+      --paper-dark: #ede7d8;
+      --paper-rule: #d9d0be;
+      --red-stamp:  #c0392b;
+      --red-light:  #fdf0ee;
+      --gold:       #8b6914;
+      --gold-light: #f5edd8;
+      --green:      #2d6a4f;
+      --green-light:#eaf4ee;
+      --shadow:     0 2px 8px rgba(26,18,8,.10);
+      --shadow-lg:  0 6px 24px rgba(26,18,8,.14);
+      --radius:     6px;
+      --mono:       'IBM Plex Mono', monospace;
+      --sans:       'Inter', sans-serif;
+      --transition: .18s ease;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100dvh;
+      /* Subtle ruled-paper lines */
+      background-image:
+        repeating-linear-gradient(
+          to bottom,
+          transparent,
+          transparent 31px,
+          var(--paper-rule) 31px,
+          var(--paper-rule) 32px
+        );
+      background-attachment: fixed;
+    }
+
+    /* ── HEADER ───────────────────────────────────────── */
+    header {
+      background: var(--ink);
+      color: var(--paper);
+      padding: 20px 20px 18px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 3px 12px rgba(0,0,0,.35);
+    }
+
+    .header-eyebrow {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--paper-rule);
+      margin-bottom: 4px;
+    }
+
+    header h1 {
+      font-family: var(--sans);
+      font-size: clamp(18px, 5vw, 26px);
+      font-weight: 700;
+      letter-spacing: -.01em;
+    }
+
+    .header-sub {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: #a89e8c;
+      margin-top: 4px;
+    }
+
+    /* ── MAIN CONTAINER ───────────────────────────────── */
+    main {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 24px 16px 60px;
+    }
+
+    /* ── SECTION LABELS ───────────────────────────────── */
+    .section-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--paper-rule);
+    }
+
+    /* ── CLAIM FORM ───────────────────────────────────── */
+    .form-card {
+      background: #fff;
+      border: 1.5px solid var(--paper-rule);
+      border-radius: var(--radius);
+      padding: 22px 20px 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 32px;
+    }
+
+    .form-row { margin-bottom: 16px; }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--ink-light);
+      margin-bottom: 6px;
+    }
+
+    input[type="text"], textarea {
+      width: 100%;
+      font-family: var(--sans);
+      font-size: 15px;
+      color: var(--ink);
+      background: var(--paper);
+      border: 1.5px solid var(--paper-rule);
+      border-radius: var(--radius);
+      padding: 10px 13px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      outline: none;
+      -webkit-appearance: none;
+      resize: vertical;
+    }
+
+    input[type="text"]:focus, textarea:focus {
+      border-color: var(--ink);
+      box-shadow: 0 0 0 3px rgba(26,18,8,.07);
+      background: #fff;
+    }
+
+    textarea { min-height: 72px; max-height: 180px; }
+
+    /* Duplicate warning inline */
+    .dup-warning {
+      display: none;
+      margin-top: 8px;
+      background: #fff8f7;
+      border: 1.5px solid var(--red-stamp);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      font-size: 13px;
+      color: var(--red-stamp);
+      line-height: 1.45;
+    }
+    .dup-warning.visible { display: block; }
+    .dup-warning strong { font-weight: 600; }
+
+    .submit-btn {
+      width: 100%;
+      background: var(--ink);
+      color: var(--paper);
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 13px;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+      letter-spacing: .02em;
+      margin-top: 4px;
+    }
+    .submit-btn:hover { background: var(--ink-light); box-shadow: var(--shadow); }
+    .submit-btn:active { transform: scale(.98); }
+    .submit-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+    /* ── STATS BAR ────────────────────────────────────── */
+    .stats-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .stat-pill {
+      font-family: var(--mono);
+      font-size: 11px;
+      background: var(--paper-dark);
+      border: 1px solid var(--paper-rule);
+      border-radius: 99px;
+      padding: 4px 12px;
+      color: var(--ink-muted);
+    }
+    .stat-pill span { color: var(--ink); font-weight: 500; }
+
+    .live-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--green);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .live-dot::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: .5; transform: scale(.85); }
+    }
+
+    /* ── SEARCH / FILTER ──────────────────────────────── */
+    .search-wrap {
+      position: relative;
+      margin-bottom: 16px;
+    }
+    .search-wrap input {
+      padding-left: 36px;
+      font-size: 14px;
+    }
+    .search-icon {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--ink-muted);
+      pointer-events: none;
+      font-size: 16px;
+    }
+
+    /* ── CLAIM CARDS ──────────────────────────────────── */
+    #claims-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .claim-card {
+      background: #fff;
+      border: 1.5px solid var(--paper-rule);
+      border-radius: var(--radius);
+      padding: 16px 16px 14px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+      animation: slideIn .25s ease;
+      transition: box-shadow var(--transition), border-color var(--transition);
+    }
+    .claim-card:hover { box-shadow: var(--shadow-lg); }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Duplicate flag state */
+    .claim-card.is-dup { border-color: var(--red-stamp); background: var(--red-light); }
+
+    /* Rubber-stamp diagonal badge */
+    .stamp-badge {
+      display: none;
+      position: absolute;
+      top: 14px;
+      right: -28px;
+      background: var(--red-stamp);
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      padding: 3px 34px;
+      transform: rotate(28deg);
+      box-shadow: 0 2px 6px rgba(192,57,43,.35);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .claim-card.is-dup .stamp-badge { display: block; }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .card-id {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--ink-muted);
+      flex-shrink: 0;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.35;
+      flex: 1;
+    }
+
+    .card-team {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--gold);
+      background: var(--gold-light);
+      border: 1px solid #d4b96e;
+      border-radius: 3px;
+      padding: 2px 7px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .card-note {
+      font-size: 13px;
+      color: var(--ink-light);
+      line-height: 1.45;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid var(--paper-rule);
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--paper-rule);
+    }
+
+    .card-time {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--ink-muted);
+    }
+
+    .remove-btn {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      background: transparent;
+      border: 1px solid var(--paper-rule);
+      border-radius: 3px;
+      padding: 3px 9px;
+      cursor: pointer;
+      transition: color var(--transition), border-color var(--transition), background var(--transition);
+    }
+    .remove-btn:hover {
+      color: var(--red-stamp);
+      border-color: var(--red-stamp);
+      background: var(--red-light);
+    }
+
+    /* ── EMPTY STATE ──────────────────────────────────── */
+    #empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--ink-muted);
+      font-size: 14px;
+      display: none;
+    }
+    #empty-state .empty-icon { font-size: 36px; margin-bottom: 10px; }
+
+    /* ── LOADING SKELETON ─────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--paper-dark) 25%, var(--paper-rule) 50%, var(--paper-dark) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 4px;
+      height: 14px;
+    }
+    @keyframes shimmer {
+      from { background-position: 200% 0; }
+      to   { background-position: -200% 0; }
+    }
+    .skeleton-card {
+      background: #fff;
+      border: 1.5px solid var(--paper-rule);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+    .skeleton-card .skeleton + .skeleton { margin-top: 8px; }
+    .sk-title { width: 70%; }
+    .sk-team  { width: 35%; height: 11px; }
+    .sk-note  { width: 90%; height: 11px; }
+    .sk-time  { width: 45%; height: 10px; }
+
+    /* ── TOAST ────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--ink);
+      color: var(--paper);
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: .03em;
+      padding: 10px 22px;
+      border-radius: 99px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.3);
+      transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+      z-index: 999;
+      pointer-events: none;
+      white-space: nowrap;
+      max-width: 90vw;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.error { background: var(--red-stamp); }
+
+    /* ── CONFIRM MODAL ────────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(26,18,8,.5);
+      backdrop-filter: blur(2px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff;
+      border: 2px solid var(--ink);
+      border-radius: var(--radius);
+      padding: 28px 24px 22px;
+      max-width: 380px;
+      width: 100%;
+      box-shadow: var(--shadow-lg);
+      animation: popIn .2s ease;
+    }
+    @keyframes popIn {
+      from { transform: scale(.94); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+    .modal h2 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .modal p { font-size: 14px; color: var(--ink-light); line-height: 1.5; }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .modal-actions button {
+      flex: 1;
+      padding: 10px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background var(--transition);
+      border: 1.5px solid;
+    }
+    .btn-cancel {
+      background: transparent;
+      border-color: var(--paper-rule);
+      color: var(--ink);
+    }
+    .btn-cancel:hover { background: var(--paper-dark); }
+    .btn-confirm-remove {
+      background: var(--red-stamp);
+      border-color: var(--red-stamp);
+      color: #fff;
+    }
+    .btn-confirm-remove:hover { background: #a93226; }
+    .btn-confirm-submit {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: var(--paper);
+    }
+    .btn-confirm-submit:hover { background: var(--ink-light); }
+
+    /* ── RESPONSIVE ───────────────────────────────────── */
+    @media (max-width: 400px) {
+      .form-card { padding: 16px 14px; }
+      .card-header { flex-direction: column; gap: 4px; }
+      .card-id { order: -1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────── -->
+<header>
+  <div class="header-eyebrow">B.Tech Cyber Security · Final Year Project</div>
+  <h1>📋 Project Title Registry</h1>
+  <div class="header-sub">CLAIM YOUR TITLE &mdash; AVOID DUPLICATES</div>
+</header>
+
+<!-- ── MAIN ───────────────────────────────────────────── -->
+<main>
+
+  <!-- CLAIM FORM -->
+  <div class="section-label">§ Register a New Title</div>
+  <div class="form-card">
+    <form id="claim-form" autocomplete="off">
+
+      <div class="form-row">
+        <label for="team-name">Team / Student Name</label>
+        <input type="text" id="team-name" placeholder="e.g. Riya Sharma & Karan Mehta" required maxlength="120" />
+      </div>
+
+      <div class="form-row">
+        <label for="project-title">Project Title</label>
+        <input type="text" id="project-title" placeholder="e.g. AI-Based Phishing URL Detection System" required maxlength="220" />
+        <div class="dup-warning" id="dup-warning">
+          ⚠ <strong>Possible duplicate detected.</strong><br />
+          <span id="dup-detail"></span><br />
+          You can still submit, but please review the flagged entry below.
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label for="project-note">Short Note <span style="font-weight:400;color:var(--ink-muted)">(optional)</span></label>
+        <textarea id="project-note" placeholder="Brief description, tech stack, or scope…" maxlength="300"></textarea>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submit-btn">Register Title →</button>
+    </form>
+  </div>
+
+  <!-- SUBMITTED CLAIMS -->
+  <div class="stats-bar">
+    <div>
+      <div class="section-label" style="margin-bottom:0">§ Registered Titles</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div class="stat-pill">Total: <span id="count-total">—</span></div>
+      <div class="live-dot">Live</div>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search-input" placeholder="Search titles or team names…" />
+  </div>
+
+  <!-- Cards -->
+  <div id="loading-skeletons">
+    <div class="skeleton-card" style="margin-bottom:12px">
+      <div class="skeleton sk-title" style="margin-bottom:10px"></div>
+      <div class="skeleton sk-team"></div>
+      <div class="skeleton sk-note" style="margin-top:10px"></div>
+      <div class="skeleton sk-time" style="margin-top:10px"></div>
+    </div>
+    <div class="skeleton-card" style="margin-bottom:12px">
+      <div class="skeleton sk-title" style="margin-bottom:10px"></div>
+      <div class="skeleton sk-team"></div>
+      <div class="skeleton sk-time" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <div id="empty-state">
+    <div class="empty-icon">📭</div>
+    <div>No titles registered yet.<br />Be the first to claim yours!</div>
+  </div>
+
+  <div id="claims-list"></div>
+
+</main>
+
+<!-- ── TOAST ──────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<!-- ── MODALS ─────────────────────────────────────────── -->
+<!-- Remove confirm -->
+<div class="modal-overlay" id="remove-modal">
+  <div class="modal">
+    <h2>🗑 Remove this claim?</h2>
+    <p>This will permanently delete <strong id="remove-title-preview"></strong> from the registry. Anyone can see it's gone.</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="remove-cancel">Cancel</button>
+      <button class="btn-confirm-remove" id="remove-confirm">Yes, Remove</button>
+    </div>
+  </div>
+</div>
+
+<!-- Duplicate-submit confirm -->
+<div class="modal-overlay" id="dup-modal">
+  <div class="modal">
+    <h2>⚠️ Possible Duplicate</h2>
+    <p id="dup-modal-detail">Your title is similar to an existing entry. Are you sure you want to register it?</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="dup-cancel">Go Back & Edit</button>
+      <button class="btn-confirm-submit" id="dup-confirm">Register Anyway</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── FIREBASE + APP LOGIC ───────────────────────────── -->
+<script type="module">
+  // ── FIREBASE SETUP ─────────────────────────────────────────────────────────
+  // Using Firebase v9 modular SDK via CDN
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getFirestore, collection, addDoc, deleteDoc, doc,
+    onSnapshot, query, orderBy, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // ┌─────────────────────────────────────────────────────────────────────────┐
+  // │  🔑  PASTE YOUR FIREBASE CONFIG HERE                                   │
+  // │  Go to console.firebase.google.com → New Project → Firestore           │
+  // │  → Project Settings → Your Apps → Add Web App → copy firebaseConfig    │
+  // └─────────────────────────────────────────────────────────────────────────┘
+  const firebaseConfig = {
+    apiKey:            "AIzaSyBWNd0jfebqqmFYnw8_yIPt6MAzYGvbrn8",
+    authDomain:        "projecttitle-ccffc.firebaseapp.com",
+    projectId:         "projecttitle-ccffc",
+    storageBucket:     "projecttitle-ccffc.firebasestorage.app",
+    messagingSenderId: "523424515927",
+    appId:             "1:523424515927:web:5bee6e91d3b74eae50a012",
+    measurementId:     "G-LQP8X451S5"
+  };
+
+  // ── INIT ────────────────────────────────────────────────────────────────────
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+  const COLL = "claims"; // Firestore collection name
+
+  // ── DOM REFS ────────────────────────────────────────────────────────────────
+  const form          = document.getElementById("claim-form");
+  const teamInput     = document.getElementById("team-name");
+  const titleInput    = document.getElementById("project-title");
+  const noteInput     = document.getElementById("project-note");
+  const submitBtn     = document.getElementById("submit-btn");
+  const dupWarning    = document.getElementById("dup-warning");
+  const dupDetail     = document.getElementById("dup-detail");
+  const claimsList    = document.getElementById("claims-list");
+  const emptyState    = document.getElementById("empty-state");
+  const loadingSkel   = document.getElementById("loading-skeletons");
+  const countTotal    = document.getElementById("count-total");
+  const searchInput   = document.getElementById("search-input");
+  const toast         = document.getElementById("toast");
+  const removeModal   = document.getElementById("remove-modal");
+  const removeCancel  = document.getElementById("remove-cancel");
+  const removeConfirm = document.getElementById("remove-confirm");
+  const removeTitleP  = document.getElementById("remove-title-preview");
+  const dupModal      = document.getElementById("dup-modal");
+  const dupCancel     = document.getElementById("dup-cancel");
+  const dupConfirm    = document.getElementById("dup-confirm");
+  const dupModalDetail= document.getElementById("dup-modal-detail");
+
+  // ── STATE ───────────────────────────────────────────────────────────────────
+  let allClaims      = [];   // {id, team, title, note, ts}
+  let pendingRemoveId = null;
+  let pendingSubmitData = null;
+  let toastTimer     = null;
+
+  // ── DUPLICATE DETECTION ─────────────────────────────────────────────────────
+  const STOP_WORDS = new Set([
+    "a","an","the","and","or","of","in","on","at","to","for","is","are",
+    "be","it","its","that","this","with","by","as","into","from","was",
+    "based","using","system","application","app","project","implementation",
+    "detection","tool","platform","framework","approach","technique",
+    "study","analysis","design","development","smart","automated","intelligent",
+    "advanced","enhanced","deep","learning","machine","model","network","web",
+    "mobile","cloud","data","security","cyber","digital","online","real","time",
+  ]);
+
+  function tokenise(text) {
+    return text.toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter(w => w.length > 2 && !STOP_WORDS.has(w));
+  }
+
+  function jaccardSimilarity(a, b) {
+    const setA = new Set(tokenise(a));
+    const setB = new Set(tokenise(b));
+    if (setA.size === 0 && setB.size === 0) return 0;
+    const intersection = [...setA].filter(x => setB.has(x)).length;
+    const union = new Set([...setA, ...setB]).size;
+    return union === 0 ? 0 : intersection / union;
+  }
+
+  function findDuplicates(inputTitle, excludeId = null) {
+    const threshold = 0.35; // ~35% Jaccard ≈ ~50% overlap feel
+    return allClaims
+      .filter(c => c.id !== excludeId)
+      .map(c => ({ ...c, sim: jaccardSimilarity(inputTitle, c.title) }))
+      .filter(c => c.sim >= threshold)
+      .sort((a, b) => b.sim - a.sim);
+  }
+
+  // ── LIVE DUPLICATE CHECK ON TYPING ─────────────────────────────────────────
+  let lastHighlightedIds = [];
+
+  function checkDuplicatesInUI(inputTitle) {
+    // Clear previous highlights
+    lastHighlightedIds.forEach(id => {
+      const el = document.querySelector(`[data-id="${id}"]`);
+      if (el) el.classList.remove("is-dup");
+    });
+    lastHighlightedIds = [];
+
+    if (inputTitle.trim().length < 8) {
+      dupWarning.classList.remove("visible");
+      return [];
+    }
+
+    const dups = findDuplicates(inputTitle);
+    if (dups.length === 0) {
+      dupWarning.classList.remove("visible");
+      return [];
+    }
+
+    const top = dups[0];
+    const pct = Math.round(top.sim * 100);
+    dupDetail.textContent =
+      `"${top.title}" (by ${top.team}) — ${pct}% keyword overlap.`;
+    dupWarning.classList.add("visible");
+
+    dups.forEach(d => {
+      lastHighlightedIds.push(d.id);
+      const el = document.querySelector(`[data-id="${d.id}"]`);
+      if (el) {
+        el.classList.add("is-dup");
+        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    });
+    return dups;
+  }
+
+  titleInput.addEventListener("input", () => {
+    checkDuplicatesInUI(titleInput.value);
+  });
+
+  // ── FORM SUBMIT ─────────────────────────────────────────────────────────────
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const team  = teamInput.value.trim();
+    const title = titleInput.value.trim();
+    const note  = noteInput.value.trim();
+    if (!team || !title) return;
+
+    const dups = findDuplicates(title);
+
+    if (dups.length > 0) {
+      // Show confirm modal
+      const top = dups[0];
+      dupModalDetail.textContent =
+        `Your title is ${Math.round(top.sim * 100)}% similar to "${top.title}" ` +
+        `by ${top.team}. Are you sure you want to register it anyway?`;
+      pendingSubmitData = { team, title, note };
+      dupModal.classList.add("open");
+      return;
+    }
+
+    await doSubmit({ team, title, note });
+  });
+
+  dupCancel.addEventListener("click", () => {
+    dupModal.classList.remove("open");
+    pendingSubmitData = null;
+  });
+
+  dupConfirm.addEventListener("click", async () => {
+    dupModal.classList.remove("open");
+    if (pendingSubmitData) await doSubmit(pendingSubmitData);
+    pendingSubmitData = null;
+  });
+
+  async function doSubmit({ team, title, note }) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Registering…";
+    try {
+      await addDoc(collection(db, COLL), {
+        team, title, note,
+        ts: serverTimestamp()
+      });
+      form.reset();
+      dupWarning.classList.remove("visible");
+      // Clear highlights
+      lastHighlightedIds.forEach(id => {
+        const el = document.querySelector(`[data-id="${id}"]`);
+        if (el) el.classList.remove("is-dup");
+      });
+      lastHighlightedIds = [];
+      showToast("✓ Title registered successfully!");
+    } catch (err) {
+      console.error(err);
+      showToast("❌ Failed to register. Check connection.", true);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Register Title →";
+    }
+  }
+
+  // ── REMOVE ───────────────────────────────────────────────────────────────────
+  removeCancel.addEventListener("click", () => {
+    removeModal.classList.remove("open");
+    pendingRemoveId = null;
+  });
+
+  removeConfirm.addEventListener("click", async () => {
+    if (!pendingRemoveId) return;
+    removeModal.classList.remove("open");
+    try {
+      await deleteDoc(doc(db, COLL, pendingRemoveId));
+      showToast("✓ Claim removed.");
+    } catch (err) {
+      console.error(err);
+      showToast("❌ Could not remove. Try again.", true);
+    }
+    pendingRemoveId = null;
+  });
+
+  function triggerRemove(id, title) {
+    pendingRemoveId = id;
+    removeTitleP.textContent = `"${title}"`;
+    removeModal.classList.add("open");
+  }
+
+  // ── REAL-TIME LISTENER ────────────────────────────────────────────────────────
+  const q = query(collection(db, COLL), orderBy("ts", "desc"));
+
+  onSnapshot(q, (snapshot) => {
+    loadingSkel.style.display = "none";
+    allClaims = snapshot.docs.map(d => ({
+      id:    d.id,
+      team:  d.data().team  || "",
+      title: d.data().title || "",
+      note:  d.data().note  || "",
+      ts:    d.data().ts,
+    }));
+    countTotal.textContent = allClaims.length;
+    renderCards(searchInput.value.trim());
+  }, (err) => {
+    loadingSkel.style.display = "none";
+    console.error(err);
+    showToast("❌ Could not load data. Check Firebase config.", true);
+  });
+
+  // ── RENDER ────────────────────────────────────────────────────────────────────
+  function renderCards(filter = "") {
+    const filtered = filter.length > 0
+      ? allClaims.filter(c =>
+          c.title.toLowerCase().includes(filter.toLowerCase()) ||
+          c.team.toLowerCase().includes(filter.toLowerCase())
+        )
+      : allClaims;
+
+    if (filtered.length === 0) {
+      claimsList.innerHTML = "";
+      emptyState.style.display = "block";
+      return;
+    }
+    emptyState.style.display = "none";
+
+    // Re-run dup check with current typed title
+    const currentInput = titleInput.value.trim();
+    const currentDups  = currentInput.length >= 8
+      ? new Set(findDuplicates(currentInput).map(d => d.id))
+      : new Set();
+
+    claimsList.innerHTML = filtered.map((c, i) => {
+      const isDup   = currentDups.has(c.id);
+      const timeStr = formatTime(c.ts);
+      const idx     = String(allClaims.indexOf(c) + 1).padStart(3, "0");
+      const noteHtml = c.note
+        ? `<div class="card-note">${escHtml(c.note)}</div>`
+        : "";
+
+      return `
+        <div class="claim-card ${isDup ? "is-dup" : ""}" data-id="${c.id}">
+          <div class="stamp-badge">Possible Duplicate</div>
+          <div class="card-header">
+            <div class="card-id">#${idx}</div>
+          </div>
+          <div class="card-title">${escHtml(c.title)}</div>
+          <div class="card-team">${escHtml(c.team)}</div>
+          ${noteHtml}
+          <div class="card-footer">
+            <div class="card-time">🕐 ${timeStr}</div>
+            <button class="remove-btn" onclick="window.__removeEntry('${c.id}', ${JSON.stringify(c.title)})">Remove</button>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  // Expose remove handler to global scope (used in onclick)
+  window.__removeEntry = (id, title) => triggerRemove(id, title);
+
+  // ── SEARCH ────────────────────────────────────────────────────────────────────
+  searchInput.addEventListener("input", () => {
+    renderCards(searchInput.value.trim());
+  });
+
+  // ── HELPERS ───────────────────────────────────────────────────────────────────
+  function formatTime(ts) {
+    if (!ts) return "just now";
+    const date = ts.toDate ? ts.toDate() : new Date(ts);
+    const now  = new Date();
+    const diff = Math.floor((now - date) / 1000);
+    if (diff < 60)   return "just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400)return `${Math.floor(diff / 3600)}h ago`;
+    return date.toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" });
+  }
+
+  function escHtml(str) {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function showToast(msg, isError = false) {
+    toast.textContent = msg;
+    toast.className   = "show" + (isError ? " error" : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.className = ""; }, 3400);
+  }
+
+  // Close modals on overlay click
+  [removeModal, dupModal].forEach(m => {
+    m.addEventListener("click", (e) => {
+      if (e.target === m) {
+        m.classList.remove("open");
+        pendingRemoveId = null;
+        pendingSubmitData = null;
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
